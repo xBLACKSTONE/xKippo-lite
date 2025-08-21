@@ -1,0 +1,13 @@
+{
+  "log_file": "/var/log/cowrie/cowrie.log",
+  "irc_server": "irc.libera.chat",
+  "irc_port": 6697,
+  "irc_use_ssl": true,
+  "irc_nickname": "CowrieBot",
+  "irc_channel": "#cowrie-alerts",
+  "irc_password": null,
+  "irc_use_colors": true,
+  "stats_interval": 300,
+  "log_level": "INFO",
+  "log_file_path": "/var/log/cowrie-irc-bot/cowrie-irc-bot.log"
+}

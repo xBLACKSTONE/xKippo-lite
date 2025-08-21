@@ -1,0 +1,10 @@
+# Core requirements
+irc>=20.0.0
+pytz>=2023.3
+
+# Optional requirements
+geoip2>=4.7.0  # For IP geolocation
+
+# Development and testing requirements
+pytest>=7.0.0
+pytest-cov>=4.1.0
