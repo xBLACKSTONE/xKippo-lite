@@ -14,17 +14,18 @@ class Config:
 
     # Default configuration
     DEFAULT_CONFIG = {
-        "log_file": "/var/log/cowrie/cowrie.log",
-        "irc_server": "irc.libera.chat",
-        "irc_port": 6697,
-        "irc_use_ssl": True,
+        "log_file": "/home/cowrie/cowrie/var/log/cowrie/cowrie.log",
+        "irc_server": "irc.yoloswag.io",
+        "irc_port": 6667,
+        "irc_use_ssl": False,
         "irc_nickname": "CowrieBot",
-        "irc_channel": "#cowrie-alerts",
+        "irc_channel": "#opers",
         "irc_password": None,
         "irc_use_colors": True,
         "stats_interval": 300,  # 5 minutes
         "log_level": "INFO",
         "log_file_path": None,  # Log to stdout by default
+        "wait_for_logfile": True,  # Wait for log file to be created
     }
 
     def __init__(self):
@@ -179,10 +180,14 @@ class Config:
         self._validate_config()
             
     def _validate_config(self) -> None:
-        """Validate the configuration and exit if invalid."""
+        """Validate the configuration and warn if issues are found."""
         if not os.path.exists(self.config["log_file"]):
-            self.logger.error(f"Log file not found: {self.config['log_file']}")
-            sys.exit(1)
+            self.logger.warning(f"Log file not found: {self.config['log_file']}")
+            if self.config.get("wait_for_logfile", True):
+                self.logger.warning("Bot will start and wait for the log file to be created")
+            else:
+                self.logger.error("Log file not found and wait_for_logfile is disabled")
+                sys.exit(1)
             
     def get(self, key: str, default: Any = None) -> Any:
         """

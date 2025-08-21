@@ -10,6 +10,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Determine base paths
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
 # Variables
 INSTALL_DIR="/opt/cowrie-irc-bot"
 SYSTEMD_SERVICE_FILE="/etc/systemd/system/cowrie-irc-bot.service"
@@ -18,7 +22,7 @@ CONFIG_FILE="$CONFIG_DIR/config.json"
 LOG_DIR="/var/log/cowrie-irc-bot"
 
 # Default Cowrie log location
-COWRIE_LOG="/var/log/cowrie/cowrie.log"
+COWRIE_LOG="/home/cowrie/cowrie/var/log/cowrie/cowrie.log"
 
 # Functions
 print_banner() {
@@ -93,9 +97,19 @@ install_dependencies() {
     print_status "Checking Python version..."
     PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     
-    if [[ "$(echo "$PYTHON_VERSION >= 3.8" | bc)" -eq 0 ]]; then
-        print_error "Python 3.8 or newer required, found $PYTHON_VERSION"
-        exit 1
+    # Use bc for version comparison
+    if ! command -v bc &> /dev/null; then
+        # If bc is not available, fall back to simple comparison
+        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+        if [[ $PYTHON_MAJOR -lt 3 || ($PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 8) ]]; then
+            print_warning "Python 3.8 or newer recommended, found $PYTHON_VERSION. Some features may not work correctly."
+        fi
+    else
+        # Use bc for more accurate version comparison
+        if [[ $(echo "$PYTHON_VERSION < 3.8" | bc -l) -eq 1 ]]; then
+            print_warning "Python 3.8 or newer recommended, found $PYTHON_VERSION. Some features may not work correctly."
+        fi
     fi
     
     print_status "Python $PYTHON_VERSION detected"
@@ -103,6 +117,8 @@ install_dependencies() {
 
 install_app() {
     print_status "Installing Cowrie IRC Bot..."
+    
+    print_status "Installing from: $PROJECT_ROOT"
 
     # Create directories
     mkdir -p "$INSTALL_DIR"
@@ -112,13 +128,34 @@ install_app() {
     # Create virtual environment
     python3 -m venv "$INSTALL_DIR/venv"
     
-    # Copy application files
-    cp -r ../src "$INSTALL_DIR/"
-    cp -r ../scripts "$INSTALL_DIR/"
+    # Copy application files - avoid copying if already in the target directory
+    if [ "$PROJECT_ROOT" != "$INSTALL_DIR" ]; then
+        print_status "Copying files to installation directory"
+        # Ensure target directories exist
+        mkdir -p "$INSTALL_DIR/src"
+        mkdir -p "$INSTALL_DIR/scripts"
+        
+        # Copy files with rsync or cp
+        if command -v rsync &> /dev/null; then
+            rsync -a "$PROJECT_ROOT/src/" "$INSTALL_DIR/src/"
+            rsync -a "$PROJECT_ROOT/scripts/" "$INSTALL_DIR/scripts/"
+        else
+            cp -rf "$PROJECT_ROOT/src/"* "$INSTALL_DIR/src/"
+            cp -rf "$PROJECT_ROOT/scripts/"* "$INSTALL_DIR/scripts/"
+        fi
+    else
+        print_status "Already in installation directory, skipping file copy"
+    fi
     
     # Install Python requirements
     "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
     "$INSTALL_DIR/venv/bin/pip" install irc geoip2 pytz
+    
+    # Check for requirements.txt and install if it exists
+    if [ -f "$PROJECT_ROOT/requirements.txt" ]; then
+        print_status "Installing requirements from requirements.txt"
+        "$INSTALL_DIR/venv/bin/pip" install -r "$PROJECT_ROOT/requirements.txt"
+    fi
     
     print_status "Application installed to $INSTALL_DIR"
 }
@@ -130,22 +167,35 @@ create_config() {
         cat > "$CONFIG_FILE" << EOF
 {
     "log_file": "$COWRIE_LOG",
-    "irc_server": "irc.libera.chat",
-    "irc_port": 6697,
-    "irc_use_ssl": true,
+    "irc_server": "irc.yoloswag.io",
+    "irc_port": 6667,
+    "irc_use_ssl": false,
     "irc_nickname": "CowrieBot",
-    "irc_channel": "#cowrie-alerts",
+    "irc_channel": "#opers",
     "irc_password": null,
     "irc_use_colors": true,
     "stats_interval": 300,
     "log_level": "INFO",
-    "log_file_path": "$LOG_DIR/cowrie-irc-bot.log"
+    "log_file_path": "$LOG_DIR/cowrie-irc-bot.log",
+    "wait_for_logfile": true
 }
 EOF
         print_status "Default configuration created at $CONFIG_FILE"
         print_warning "Please edit the configuration file to set your IRC settings"
     else
         print_warning "Configuration file already exists, not overwriting"
+    fi
+    
+    # Create log directory and empty log file if needed
+    mkdir -p "$LOG_DIR"
+    touch "$LOG_DIR/cowrie-irc-bot.log"
+    
+    # Create empty Cowrie log file if specified and doesn't exist
+    if [ ! -f "$COWRIE_LOG" ] && [ "$CREATE_EMPTY_LOGFILE" = "1" ]; then
+        print_status "Creating empty Cowrie log file at $COWRIE_LOG"
+        mkdir -p "$(dirname "$COWRIE_LOG")"
+        touch "$COWRIE_LOG"
+        chmod 644 "$COWRIE_LOG"
     fi
 }
 
@@ -174,15 +224,27 @@ EOF
     
     # Enable service
     systemctl daemon-reload
-    print_warning "Service created but not enabled. Run the following to start the service:"
+    print_warning "Service created but not enabled. Run the following to start and enable the service:"
     echo "    sudo systemctl enable --now cowrie-irc-bot.service"
+    echo ""
+    print_status "To check service status, use:"
+    echo "    sudo systemctl status cowrie-irc-bot.service"
+    echo ""
+    print_status "To view service logs, use:"
+    echo "    sudo journalctl -u cowrie-irc-bot.service -f"
+    echo ""
+    print_status "To manually start the bot for troubleshooting:"
+    echo "    cd $INSTALL_DIR && sudo $INSTALL_DIR/venv/bin/python -m src.main --config $CONFIG_FILE"
 }
 
 install_docker() {
     print_status "Building Docker image..."
     
-    # Copy docker files
-    cp ../Dockerfile ../docker-compose.yml ../.dockerignore "$INSTALL_DIR/"
+    # Copy docker files using project root path
+    cp "$PROJECT_ROOT/Dockerfile" "$PROJECT_ROOT/docker-compose.yml" "$INSTALL_DIR/"
+    if [ -f "$PROJECT_ROOT/.dockerignore" ]; then
+        cp "$PROJECT_ROOT/.dockerignore" "$INSTALL_DIR/"
+    fi
     
     # Build Docker image
     cd "$INSTALL_DIR"
@@ -199,8 +261,29 @@ install_docker() {
 print_banner
 detect_distro
 
+# Show usage information
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Install Cowrie IRC Bot to monitor Cowrie honeypot logs and send alerts to IRC."
+    echo ""
+    echo "Options:"
+    echo "  --docker            Install for Docker operation (builds Docker image)"
+    echo "  --cowrie-log PATH   Set custom Cowrie log file path (default: $COWRIE_LOG)"
+    echo "  --create-logfile    Create empty Cowrie log file if it doesn't exist"
+    echo "  --help              Show this help message and exit"
+    echo ""
+    echo "Examples:"
+    echo "  $0                                    # Standard installation"
+    echo "  $0 --docker                           # Docker installation"
+    echo "  $0 --cowrie-log /path/to/cowrie.log   # Custom log file path"
+    echo "  $0 --create-logfile                   # Create log file if missing"
+    exit 0
+}
+
 # Parse command line arguments
 DOCKER_INSTALL=0
+CREATE_EMPTY_LOGFILE=0
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -213,8 +296,16 @@ while [[ $# -gt 0 ]]; do
             COWRIE_LOG="$2"
             shift 2
             ;;
+        --create-logfile)
+            CREATE_EMPTY_LOGFILE=1
+            shift
+            ;;
+        --help)
+            show_usage
+            ;;
         *)
             print_error "Unknown option: $key"
+            echo "Use --help for usage information"
             exit 1
             ;;
     esac

@@ -34,13 +34,14 @@ class CowrieLogMonitor:
         self.running = True
         
         if not os.path.exists(self.log_file):
-            self.logger.error(f"Log file not found: {self.log_file}")
-            return
-            
-        with open(self.log_file, 'r') as f:
-            # Move to the end of the file
-            f.seek(0, os.SEEK_END)
-            self.current_position = f.tell()
+            self.logger.warning(f"Log file not found: {self.log_file}")
+            self.logger.info(f"Will continue checking for log file creation")
+            self.current_position = 0
+        else:
+            with open(self.log_file, 'r') as f:
+                # Move to the end of the file
+                f.seek(0, os.SEEK_END)
+                self.current_position = f.tell()
         
         self._monitor_loop()
         
