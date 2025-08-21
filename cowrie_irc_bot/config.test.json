@@ -1,0 +1,13 @@
+{
+  "log_file": "/Users/null/projects/xKippo-lite/cowrielogsample",
+  "irc_server": "irc.libera.chat",
+  "irc_port": 6697,
+  "irc_use_ssl": true,
+  "irc_nickname": "TestCowrieBot",
+  "irc_channel": "#test-channel",
+  "irc_password": null,
+  "irc_use_colors": true,
+  "stats_interval": 60,
+  "log_level": "DEBUG",
+  "log_file_path": null
+}
