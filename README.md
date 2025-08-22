@@ -16,7 +16,7 @@ This will:
 3. Set up the initial configuration for the IRC bot
 4. Create necessary directories and files
 
-After running the initialization script, start the containers:
+After running the initialization script, restart your SSH service using the command provided by the script, then start the containers:
 
 ```bash
 docker-compose up -d

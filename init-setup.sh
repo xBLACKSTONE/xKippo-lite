@@ -220,8 +220,39 @@ remap_ssh() {
     fi
     
     print_status "SSH configuration updated. SSH will listen on port ${SSH_PORT}"
-    print_warning "You need to restart the SSH service for changes to take effect:"
-    echo "    sudo systemctl restart sshd"
+    
+    # Detect SSH service name
+    SSH_SERVICE=""
+    if systemctl list-units --type=service | grep -q "ssh.service"; then
+        SSH_SERVICE="ssh"
+    elif systemctl list-units --type=service | grep -q "sshd.service"; then
+        SSH_SERVICE="sshd"
+    elif [ -f "/etc/init.d/ssh" ]; then
+        SSH_SERVICE="init.d/ssh"
+    elif [ -f "/etc/init.d/sshd" ]; then
+        SSH_SERVICE="init.d/sshd"
+    else
+        print_warning "Could not detect SSH service name automatically"
+        SSH_SERVICE=""
+    fi
+    
+    print_warning "You need to restart the SSH service for changes to take effect."
+    if [ -n "$SSH_SERVICE" ]; then
+        if [[ "$SSH_SERVICE" == init.d/* ]]; then
+            echo "    sudo service ${SSH_SERVICE#*/} restart"
+        else
+            echo "    sudo systemctl restart $SSH_SERVICE"
+        fi
+    else
+        print_warning "Try one of the following commands to restart SSH:"
+        echo "    sudo systemctl restart ssh"
+        echo "    sudo systemctl restart sshd"
+        echo "    sudo service ssh restart"
+        echo "    sudo service sshd restart"
+        echo "    sudo /etc/init.d/ssh restart"
+        echo "    sudo /etc/init.d/sshd restart"
+    fi
+    
     echo ""
     print_warning "IMPORTANT: Keep this terminal session open and verify SSH works"
     print_warning "on the new port before closing it to avoid being locked out."
@@ -245,9 +276,7 @@ create_default_config
 print_status "Setup completed successfully!"
 
 if [ "$REMAP_SSH" -eq 1 ]; then
-    print_warning "IMPORTANT: Remember to restart the SSH service:"
-    echo "    sudo systemctl restart sshd"
-    echo ""
+    print_warning "IMPORTANT: Remember to restart the SSH service using one of the commands above"
     print_warning "Verify you can connect on the new port before closing this session:"
     echo "    ssh -p ${SSH_PORT} $(hostname)"
     echo ""
