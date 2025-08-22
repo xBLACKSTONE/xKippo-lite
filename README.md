@@ -4,14 +4,26 @@ A collection of security tools including the Cowrie IRC Bot that monitors Cowrie
 
 ## Quick Start with Docker Compose
 
-The easiest way to get started is using Docker Compose, which will set up both the Cowrie honeypot and the IRC Bot in a single command:
+The easiest way to get started is using the initialization script to set everything up properly:
+
+```bash
+sudo ./init-setup.sh
+```
+
+This will:
+1. Remap your system's SSH service from port 22 to port 1337
+2. Configure Docker to use port 22 for the honeypot
+3. Set up the initial configuration for the IRC bot
+4. Create necessary directories and files
+
+After running the initialization script, start the containers:
 
 ```bash
 docker-compose up -d
 ```
 
 This will:
-1. Start a Cowrie honeypot container
+1. Start a Cowrie honeypot container on the standard SSH port (22)
 2. Start the Cowrie IRC Bot container connected to the honeypot
 3. Automatically configure shared volumes for logs and configuration
 
@@ -42,15 +54,21 @@ To customize the IRC settings, create a configuration file at `./cowrie-irc-conf
 
 ## Accessing Honeypot Services
 
-By default, the honeypot services are exposed on the following ports:
+After setup, the honeypot services are exposed on the following ports:
 
-- SSH: Port 2222
-- Telnet: Port 2223
+- SSH: Port 22 (standard SSH port)
+- Telnet: Port 23 (standard Telnet port)
 
 You can test the honeypot by connecting to it:
 
 ```bash
-ssh -p 2222 root@localhost
+ssh root@localhost
+```
+
+Your actual SSH service will now be available on port 1337:
+
+```bash
+ssh -p 1337 yourusername@localhost
 ```
 
 ## Viewing Logs
@@ -87,9 +105,10 @@ The Cowrie honeypot configuration is stored in Docker volumes. To customize it:
 
 ### Honeypot Not Working
 
-1. Ensure ports 2222 and 2223 are not being used by other services
-2. Check the Cowrie container logs for errors
-3. Verify that the Cowrie container is running
+1. Ensure ports 22 and 23 are not being used by other services
+2. Verify that your system SSH service was properly moved to port 1337
+3. Check the Cowrie container logs for errors
+4. Verify that the Cowrie container is running
 
 ## Advanced Usage
 
@@ -100,3 +119,21 @@ To monitor multiple Cowrie instances, you can create additional IRC bot containe
 ### Running Without Docker
 
 If you prefer to run without Docker, see the installation instructions in the `cowrie_irc_bot/scripts/install.sh` file.
+
+### Advanced Init Script Options
+
+The init script supports several options for customization:
+
+```bash
+# Change the SSH port remap to something other than 1337
+sudo ./init-setup.sh --ssh-port 2022
+
+# Customize IRC settings
+sudo ./init-setup.sh --irc-server irc.libera.chat --irc-port 6697 --irc-nickname MyCowrieBot --irc-channel "#security"
+
+# Skip SSH port remapping (use higher ports for honeypot)
+./init-setup.sh --no-remap-ssh
+
+# Show all options
+./init-setup.sh --help
+```

@@ -6,10 +6,10 @@ services:
     container_name: cowrie-honeypot
     restart: unless-stopped
     ports:
-      # SSH Honeypot Port (22 -> 2222 to avoid conflicts with host SSH)
-      - "2222:2222"
+      # SSH Honeypot Port (using standard SSH port)
+      - "22:2222"
       # Telnet Honeypot Port
-      - "2223:2223"
+      - "23:2223"
     volumes:
       - cowrie-etc:/cowrie/cowrie-git/etc
       - cowrie-var:/cowrie/cowrie-git/var
