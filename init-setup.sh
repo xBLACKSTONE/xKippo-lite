@@ -133,7 +133,7 @@ create_default_config() {
     if [ ! -f "cowrie-irc-config/config.json" ]; then
         cat > cowrie-irc-config/config.json << EOF
 {
-    "log_file": "/var/log/cowrie/cowrie.log",
+    "log_file": "/var/log/cowrie/cowrie.json",
     "irc_server": "${IRC_SERVER}",
     "irc_port": ${IRC_PORT},
     "irc_use_ssl": false,

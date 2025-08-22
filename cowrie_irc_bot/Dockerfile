@@ -24,7 +24,7 @@ RUN mkdir -p /etc/cowrie-irc-bot /var/log/cowrie-irc-bot
 
 # Create default config with appropriate values for Docker environment
 RUN echo '{ \
-    "log_file": "/var/log/cowrie/cowrie.log", \
+    "log_file": "/var/log/cowrie/cowrie.json", \
     "irc_server": "irc.yoloswag.io", \
     "irc_port": 6667, \
     "irc_use_ssl": false, \

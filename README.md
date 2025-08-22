@@ -37,7 +37,7 @@ To customize the IRC settings, create a configuration file at `./cowrie-irc-conf
 
 ```json
 {
-  "log_file": "/var/log/cowrie/cowrie.log",
+  "log_file": "/var/log/cowrie/cowrie.json",
   "irc_server": "your.irc.server",
   "irc_port": 6667,
   "irc_use_ssl": false,
@@ -96,12 +96,19 @@ The Cowrie honeypot configuration is stored in Docker volumes. To customize it:
 
 ## Troubleshooting
 
+### Common Issues
+
+1. **Log File Format**: Cowrie logs in JSON format to a file named `cowrie.json`, not `cowrie.log`. If you're having issues, make sure the configuration is pointing to the correct file.
+
+2. **IRC Connection Issues**: If the bot connects but doesn't join the channel or doesn't respond to events, check your IRC server settings.
+
 ### IRC Bot Not Connecting
 
 1. Check if the IRC server is reachable
 2. Verify the IRC settings in the configuration file
 3. Check the IRC bot logs for connection issues
 4. Make sure the Cowrie log file exists and is readable
+5. Verify that the log file path in config.json is set to `cowrie.json` and not `cowrie.log`
 
 ### Honeypot Not Working
 
