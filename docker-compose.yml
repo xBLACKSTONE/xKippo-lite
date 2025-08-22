@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: cowrie-honeypot
+    restart: unless-stopped
+    ports:
+      # SSH Honeypot Port (22 -> 2222 to avoid conflicts with host SSH)
+      - "2222:2222"
+      # Telnet Honeypot Port
+      - "2223:2223"
+    volumes:
+      - cowrie-etc:/cowrie/cowrie-git/etc
+      - cowrie-var:/cowrie/cowrie-git/var
+      - cowrie-downloads:/cowrie/cowrie-git/downloads
+      - cowrie-log:/cowrie/cowrie-git/var/log/cowrie
+    environment:
+      - COWRIE_TELNET_ENABLED=yes
+      - TZ=UTC
+    networks:
+      - honeypot-network
+
+  cowrie-irc-bot:
+    build: ./cowrie_irc_bot
+    container_name: cowrie-irc-bot
+    restart: unless-stopped
+    depends_on:
+      - cowrie
+    volumes:
+      - cowrie-log:/var/log/cowrie:ro
+      - cowrie-irc-config:/etc/cowrie-irc-bot
+      - cowrie-irc-logs:/var/log/cowrie-irc-bot
+    environment:
+      - TZ=UTC
+    networks:
+      - honeypot-network
+    # Allow the bot container to start even if cowrie log file doesn't exist yet
+    command: --config /etc/cowrie-irc-bot/config.json --wait-for-logfile
+
+volumes:
+  cowrie-etc:
+  cowrie-var:
+  cowrie-downloads:
+  cowrie-log:
+  cowrie-irc-config:
+  cowrie-irc-logs:
+
+networks:
+  honeypot-network:
