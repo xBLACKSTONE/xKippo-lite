@@ -35,8 +35,8 @@ services:
       - TZ=UTC
     networks:
       - honeypot-network
-    # Allow the bot container to start even if cowrie log file doesn't exist yet
-    command: --config /etc/cowrie-irc-bot/config.json --wait-for-logfile
+    # Use only supported command-line arguments
+    command: --config /etc/cowrie-irc-bot/config.json
 
 volumes:
   cowrie-etc:

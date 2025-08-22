@@ -35,5 +35,14 @@ if [ $# -gt 0 ]; then
     ARGS="$@"
 fi
 
-echo "Starting Cowrie IRC Bot with arguments: $ARGS"
-exec python -m src.main --config /etc/cowrie-irc-bot/config.json $ARGS
+# Filter out any unsupported arguments
+FILTERED_ARGS=""
+for arg in $ARGS; do
+    # Skip the --wait-for-logfile argument
+    if [[ "$arg" != "--wait-for-logfile" ]]; then
+        FILTERED_ARGS="$FILTERED_ARGS $arg"
+    fi
+done
+
+echo "Starting Cowrie IRC Bot with arguments: $FILTERED_ARGS"
+exec python -m src.main --config /etc/cowrie-irc-bot/config.json $FILTERED_ARGS
