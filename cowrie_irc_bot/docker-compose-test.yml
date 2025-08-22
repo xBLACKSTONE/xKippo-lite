@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  cowrie-irc-bot-test:
+    build: .
+    container_name: cowrie-irc-bot-test
+    restart: "no"
+    volumes:
+      - ./config:/etc/cowrie-irc-bot
+      - ./logs:/var/log/cowrie-irc-bot
+      - ./test-data:/var/log/cowrie
+    environment:
+      - TZ=UTC
+      - DEBUG=1
+    # Test configuration with public IRC server
+    command: --config /etc/cowrie-irc-bot/test-config.json

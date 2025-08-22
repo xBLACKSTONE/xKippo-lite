@@ -55,24 +55,59 @@ class IRCClient:
         """
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.logger.debug(f"Socket created, connecting to {self.server}:{self.port}")
             
             if self.use_ssl:
                 import ssl
+                self.logger.debug("Using SSL/TLS for connection")
                 self.socket = ssl.wrap_socket(self.socket)
                 
-            self.socket.connect((self.server, self.port))
-            self.socket.settimeout(180)  # 3-minute timeout
+            try:
+                self.socket.connect((self.server, self.port))
+                self.logger.debug(f"Socket connected successfully to {self.server}:{self.port}")
+                self.socket.settimeout(180)  # 3-minute timeout
+            except Exception as e:
+                self.logger.error(f"Failed to connect to {self.server}:{self.port} - {e}")
+                return False
             
             # Register with the server
             self._send_raw(f"NICK {self.nickname}")
             self._send_raw(f"USER {self.nickname} 0 * :{self.nickname}")
             
-            # Wait for welcome message
-            for _ in range(100):  # Try for a reasonable number of lines
+            # Wait for welcome message or response
+            self.logger.debug(f"Waiting for welcome message from IRC server {self.server}:{self.port}")
+            for i in range(100):  # Try for a reasonable number of lines
                 data = self._receive_line()
-                if data.find(f":{self.nickname}") != -1 and " 001 " in data:
-                    self.connected = True
-                    break
+                self.logger.debug(f"Received data from server (attempt {i+1}/100): {data}")
+                
+                # Handle server PING immediately
+                if data and data.startswith("PING"):
+                    pong = data.replace("PING", "PONG")
+                    self._send_raw(pong)
+                    self.logger.debug(f"Responded to server PING with: {pong}")
+                    continue
+                    
+                # Check for various server responses indicating successful registration
+                if data:
+                    # Check for successful registration (numeric 001 or other successful response)
+                    if " 001 " in data or "Welcome" in data or "MOTD" in data:
+                        self.connected = True
+                        self.logger.debug("Successfully connected to IRC server!")
+                        break
+                    # Respond to server capability messages
+                    elif " CAP " in data:
+                        self._send_raw("CAP END")
+                        self.logger.debug("Sent CAP END to finalize capabilities")
+                    # Handle nickname in use error
+                    elif " 433 " in data:
+                        self.nickname = f"{self.nickname}_"
+                        self.logger.debug(f"Nickname in use, trying alternative: {self.nickname}")
+                        self._send_raw(f"NICK {self.nickname}")
+                    # If we see numeric replies, we are probably registered even if we missed 001
+                    elif any(f" {num} " in data for num in ["002", "003", "004", "005", "251", "252", "372", "375", "376"]):
+                        self.connected = True
+                        self.logger.debug("Successfully connected based on server numeric replies")
+                        break
             
             if not self.connected:
                 return False
@@ -203,6 +238,10 @@ class IRCClient:
         buffer = ""
         while self.running:
             try:
+                if not self.socket:
+                    self.connected = False
+                    return ""
+                    
                 data = self.socket.recv(1024).decode('utf-8', errors='ignore')
                 if not data:
                     self.connected = False
@@ -214,8 +253,10 @@ class IRCClient:
                     return line
                     
             except socket.timeout:
+                self.logger.debug("Socket timeout while waiting for data")
                 return ""
             except Exception as e:
                 self.logger.error(f"Error receiving data: {e}")
                 self.connected = False
                 return ""
+        return ""

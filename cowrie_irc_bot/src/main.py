@@ -100,6 +100,10 @@ class CowrieIRCBot:
         self.logger.info("Starting Cowrie IRC Bot...")
         
         # Start IRC client
+        self.logger.debug("Starting IRC client...")
+        self.logger.debug(f"IRC config: server={self.config.get('irc_server')}, port={self.config.get('irc_port')}, nickname={self.config.get('irc_nickname')}, channel={self.config.get('irc_channel')}")
+        connected = self.irc.connect()
+        self.logger.debug(f"IRC client connected: {connected}")
         self.irc.start()
         
         # Start stats collector

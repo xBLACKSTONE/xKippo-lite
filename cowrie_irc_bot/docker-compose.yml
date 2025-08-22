@@ -1,15 +1,29 @@
 version: '3'
 
 services:
+  cowrie-honeypot:
+    image: cowrie/cowrie
+    container_name: cowrie-honeypot
+    restart: unless-stopped
+    volumes:
+      - ./honeypot-data:/cowrie/cowrie-git/var
+    ports:
+      - "2222:2222"
+      - "2223:2223"
+    environment:
+      - TZ=UTC  # Set timezone as needed
+    
   cowrie-irc-bot:
     build: .
     container_name: cowrie-irc-bot
     restart: unless-stopped
     volumes:
-      - /var/log/cowrie:/var/log/cowrie:ro
+      - ./honeypot-data/log/cowrie:/var/log/cowrie:ro
       - ./config:/etc/cowrie-irc-bot
       - ./logs:/var/log/cowrie-irc-bot
     environment:
       - TZ=UTC  # Set timezone as needed
     # If you need to use a custom configuration file
     command: --config /etc/cowrie-irc-bot/config.json
+    depends_on:
+      - cowrie-honeypot
